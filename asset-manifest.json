@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/SpeechToText/static/css/main.820ef4f8.css",
-    "main.js": "/SpeechToText/static/js/main.3d9c1b96.js",
+    "main.js": "/SpeechToText/static/js/main.a2af69e1.js",
     "static/js/787.9e9f4ffd.chunk.js": "/SpeechToText/static/js/787.9e9f4ffd.chunk.js",
     "index.html": "/SpeechToText/index.html",
     "main.820ef4f8.css.map": "/SpeechToText/static/css/main.820ef4f8.css.map",
-    "main.3d9c1b96.js.map": "/SpeechToText/static/js/main.3d9c1b96.js.map",
+    "main.a2af69e1.js.map": "/SpeechToText/static/js/main.a2af69e1.js.map",
     "787.9e9f4ffd.chunk.js.map": "/SpeechToText/static/js/787.9e9f4ffd.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.820ef4f8.css",
-    "static/js/main.3d9c1b96.js"
+    "static/js/main.a2af69e1.js"
   ]
 }
