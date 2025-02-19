@@ -6,12 +6,14 @@
   align-items: center;
   background: linear-gradient(135deg, #ff9a3c, #ff5722);
 }
+body {
+  font-family: Arial, sans-serif;
 
+}
 /* Căn giữa khung chứa nội dung */
 .container {
-  max-width: 500px;
+  max-width: 800px;
   text-align: center;
-  font-family: Arial, sans-serif;
   background: linear-gradient(135deg, #ffcc80, #ff9800);
   padding: 25px;
   border-radius: 12px;
@@ -152,3 +154,98 @@
   margin-top: 10px;
 }
 
+.result.deleted {
+  background-color: red !important;
+  color: white;
+  transition: background-color 0.3s ease-in-out;
+}
+
+.history {
+  background: linear-gradient(135deg, #ffffff, #f1f1f1);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 20px;
+  transition: all 0.3s ease-in-out;
+}
+
+.history h3 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #444;
+  margin-bottom: 12px;
+}
+
+.history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history li .delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: red;
+}
+
+.history li {
+  display: flex;
+  justify-content: space-between; /* Đưa nội dung về hai bên */
+  align-items: center; /* Căn giữa theo chiều dọc */
+  background: #ffffff;
+  color: black;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease-in-out;
+}
+
+.history li:hover {
+  color: linear-gradient(135deg, #ffcc80, #ff9800);
+
+  transform: translateY(-2px);
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.history li::before {
+  content: "📝";
+  margin-right: 12px;
+  font-size: 18px;
+}
+
+.history li.active {
+  color: linear-gradient(135deg, #ffcc80, #ff9800);
+  font-weight: bold;
+  border-left: 5px solid ;
+  padding-left: 16px;
+}
+
+
+/* Thêm animation cho toast */
+.toast {
+  position: fixed;
+  font-size: 16px;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  color: #f44336;
+  padding: 10px 20px;
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  animation: fadeInOut 3s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  20% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(10px); }
+}

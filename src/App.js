@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import { saveAs } from "file-saver";
 import "./SpeechToText.css";
 
@@ -20,11 +20,23 @@ const LANGUAGES = [
 ];
 
 const SpeechToText = () => {
+  const [isDeleted, setIsDeleted] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [transcript, setTranscript] = useState("");
+  const [transcripts, setTranscripts] = useState("");
   const [translatedText, setTranslatedText] = useState("");
   const [targetLang, setTargetLang] = useState("en");
+  const [copiedSection, setCopiedSection] = useState(""); // Đánh dấu phần nào đã sao chép
   const recognitionRef = useRef(null);
+  const [history, setHistory] = useState([]); // Lịch sử bản ghi
+  const [deletedTranscript, setDeletedTranscript] = useState(null);
+  const [toastMessage, setToastMessage] = useState("");
+  const [recordTime, setRecordTime] = useState(0);
+  let recordInterval;
+
+  const showToast = useCallback((message) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(""), 2000);
+  }, []);
 
   const startRecording = () => {
     if (!recognitionRef.current) {
@@ -33,13 +45,21 @@ const SpeechToText = () => {
       recognition.continuous = true;
       recognition.interimResults = false;
 
-      recognition.onstart = () => setRecording(true);
+      recognition.onstart = () => {
+        setRecording(true);
+        setRecordTime(0);
+        recordInterval = setInterval(() => {
+          setRecordTime(prev => prev + 1);
+        }, 1000);
+      };
       recognition.onresult = (event) => {
         const text = event.results[event.results.length - 1][0].transcript;
-        setTranscript((prev) => prev + " " + text);
+        setTranscripts((prev) => (prev ? `${prev} ${text}` : text)); // Ghép văn bản mới vào văn bản cũ
       };
 
       recognition.onend = () => {
+        clearInterval(recordInterval);
+
         if (recording) recognition.start();
         else setRecording(false);
       };
@@ -48,49 +68,116 @@ const SpeechToText = () => {
     }
     recognitionRef.current.start();
   };
+  const deleteHistoryItem = (index) => {
+    setHistory((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const stopRecording = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setRecording(false);
+      saveToHistory(); // Tự động lưu lịch sử khi dừng ghi âm
+
     }
+  };
+
+
+  
+  const undoDelete = () => {
+    if (deletedTranscript) {
+      setTranscripts(deletedTranscript);
+      setDeletedTranscript(null);
+    }
+  };
+
+  const saveToHistory = () => {
+    if (transcripts && !history.includes(transcripts)) {
+      setHistory((prev) => [...prev, transcripts]);
+    } else {
+      showToast("⚠️ Bản ghi đã có trong lịch sử!");
+    }
+  };
+  
+
+  const restoreFromHistory = (item) => {
+    setTranscripts(item);
   };
 
   const translateText = async () => {
-    if (!transcript) return;
+    if (!transcripts) return;
     try {
       const response = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(transcript)}&langpair=vi|${targetLang}`
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(transcripts)}&langpair=vi|${targetLang}`
       );
       const data = await response.json();
       setTranslatedText(data.responseData.translatedText);
-    } catch (error) {
-      console.error("Lỗi dịch:", error);
+      showToast("✅ Dịch thành công!");
+    } catch {
+      showToast("❌ Lỗi khi dịch!");
     }
   };
 
-const downloadDoc = (content, langCode) => {
-  const utf8Content = "\ufeff" + content; // Thêm BOM UTF-8
-  const blob = new Blob([utf8Content], { type: "text/plain;charset=utf-8" });
-  saveAs(blob, `transcript_${langCode}.docx`);
-};
 
+  const downloadDoc = (content, langCode) => {
+    const utf8Content = "\ufeff" + content;
+    const blob = new Blob([utf8Content], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, `transcript_${langCode}.docx`);
+    showToast("📥 Tải xuống thành công!");
+  };
+
+  const clearTranscripts = () => {
+    setTranscripts("");
+    setTranslatedText("");
+  
+  };
+
+  const deleteLastTranscript = () => {
+    if (!transcripts) return;
+    const transcriptArray = transcripts.split(" ");
+    transcriptArray.pop(); // Xóa từ cuối cùng
+    setTranscripts(transcriptArray.join(" "));
+    setIsDeleted(true); // Hiện màu đỏ khi xóa
+    setDeletedTranscript(transcripts);
+
+    setTimeout(() => setIsDeleted(false), 2000); // Reset màu sau 2s
+  };
+
+  const copyToClipboard = (text, section) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedSection(section);
+      setTimeout(() => setCopiedSection(""), 2000);
+    });
+  };
+
+  
 
   return (
     <div className="wrapper">
       <div className="container">
-        <h1 className="title">🎤 Nhận diện giọng nói</h1>
+        <h1 className="title">🎤 YOUR SPEECH YOUR TEXT</h1>
         <div className="button-group">
-          <button className={`btn ${recording ? "stop" : "start"}`} onClick={recording ? stopRecording : startRecording}>
-            {recording ? "⏹ Dừng ghi âm" : "🎙 Bắt đầu ghi âm"}
+        <button
+  className={`btn ${recording ? "stop" : "start"}`}
+  onClick={recording ? stopRecording : startRecording}
+>
+  {recording ? `⏹ STOP RECORD (${recordTime}s)` : "🎙START RECORD"}
+</button>
+
+          <button className="btn save" onClick={saveToHistory} disabled={!transcripts}>
+            💾 SAVE
           </button>
-          <button className="btn download" onClick={() => downloadDoc(transcript, "vi")} disabled={!transcript}>
-            ⬇️ Tải Tiếng Việt
+          <button className="btn undo" onClick={undoDelete} disabled={!deletedTranscript}>
+            ↩️ BACK
           </button>
-          <button className="btn download" onClick={() => downloadDoc(translatedText, targetLang)} disabled={!transcript}>
-              ⬇️ Tải Bản Dịch
-            </button>
-            
+          <button className="btn clear" onClick={clearTranscripts} disabled={!transcripts}>
+            🗑️ CLEAN
+          </button>
+          <button className="btn download" onClick={() => downloadDoc(transcripts, "vi")} disabled={!transcripts}>
+            ⬇️ DOWNL ORIGINAL TEXT
+          </button>
+          <button className="btn download" onClick={() => downloadDoc(translatedText, targetLang)} disabled={!translatedText}>
+            ⬇️ DOWNL TRANSCRIPT TEXT
+          </button>
         </div>
         <div className="translation-section">
           <select className="language-select" onChange={(e) => setTargetLang(e.target.value)} value={targetLang}>
@@ -100,22 +187,57 @@ const downloadDoc = (content, langCode) => {
               </option>
             ))}
           </select>
-          <button className="btn translate-btn" onClick={translateText} disabled={!transcript}>
-            🌍 Dịch
+          <button className="btn translate-btn" onClick={translateText} disabled={!transcripts}>
+            🌍 TRANSCRIPT
           </button>
         </div>
-        <div className="result">
-          <h3>{recording ? "🔴 Đang ghi âm..." : "Kết quả:"}</h3>
-          <p>{transcript || "🎧 Hãy nói để nhận diện giọng nói..."}</p>
-        </div>
-        {translatedText && (
-          <div className="result translated">
-            <h3>📖 Bản dịch:</h3>
-            <p>{translatedText}</p>
 
+        <div
+    className={`result ${isDeleted ? "deleted" : ""}`}
+    style={{
+      cursor: transcripts ? "pointer" : "default",
+      backgroundColor: copiedSection === "transcripts" && transcripts ? "lightgreen" : "",
+    }}
+    onClick={() => transcripts && copyToClipboard(transcripts, "transcripts")}
+  >
+    <h3>{recording ? "🔴 RECORDING..." : "RESULT:"}</h3>
+    {transcripts ? (
+      <>
+        <p>{transcripts}</p>
+        <button className="btn delete" onClick={deleteLastTranscript}>🗑️ DELETE</button>
+      </>
+    ) : (
+      <p>🎧 Pls Speak for voice recognition....</p>
+    )}
+  </div>
+
+        {translatedText && (
+          <div
+            className="result translated"
+            style={{ cursor: "pointer", backgroundColor: copiedSection === "translatedText" ? "lightgreen" : "" }}
+            onClick={() => copyToClipboard(translatedText, "translatedText")}
+          >
+            <h3>📖 TRANSLATED TEXTTEXT:</h3>
+            <p>{translatedText}</p>
           </div>
         )}
+{history.length > 0 && (
+  <div className="history">
+    <h3>📜 RECORD HISTORYHISTORY:</h3>
+    <ul>
+      {history.map((item, index) => (
+        <li key={index}>
+          <span onClick={() => restoreFromHistory(item)}>{item}</span>
+          <button className="btn delete-btn" onClick={() => deleteHistoryItem(index)}>🗑️</button>
+        </li>
+      ))}
+    </ul>
+    </div>
+)}
+
       </div>
+      {toastMessage && <div className="toast">{toastMessage}</div>}
+
     </div>
   );
 };
