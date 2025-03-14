@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Link & Nhận diện Giọng Nói</title>
+</head>
+<body>
+    <h2>🎙 Nhận diện giọng nói từ file hoặc link</h2>
+
+    <h3>1️⃣ Ghi âm trực tiếp</h3>
+    <button id="start">🎙 Bắt đầu</button>
+    <button id="stop">⏹ Dừng</button>
+    <p id="result"></p>
+    <button id="save">💾 Lưu thành file Word</button>
+
+    <h3>2️⃣ Tải lên file âm thanh</h3>
+    <input type="file" id="uploadFile" accept=".mp3,.wav,.mp4">
+    <button onclick="uploadAudio()">📤 Nhận diện giọng nói</button>
+    <p id="uploadStatus"></p>
+
+    <h3>3️⃣ Nhập link file âm thanh</h3>
+    <input type="text" id="fileUrl" placeholder="Nhập link file .mp3 hoặc .wav">
+    <button onclick="fetchAndUpload()">🔗 Tải xuống & Nhận diện</button>
+    <p id="linkStatus"></p>
+
+    <script>
+        // ======= GHI ÂM TRỰC TIẾP =======
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert("Trình duyệt không hỗ trợ Speech Recognition.");
+        } else {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'vi-VN';
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            let transcriptText = '';
+
+            recognition.onresult = (event) => {
+                transcriptText = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcriptText += event.results[i][0].transcript + ' ';
+                }
+                document.getElementById("result").innerText = transcriptText;
+            };
+
+            document.getElementById("start").addEventListener("click", () => recognition.start());
+            document.getElementById("stop").addEventListener("click", () => recognition.stop());
+
+            document.getElementById("save").addEventListener("click", () => {
+                saveToWord(transcriptText);
+            });
+
+            function saveToWord(text) {
+                const blob = new Blob([text], { type: "application/msword" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "speech-to-text.docx";
+                link.click();
+            }
+        }
+
+        // ======= UPLOAD FILE =======
+        async function uploadAudio() {
+            const fileInput = document.getElementById("uploadFile");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Vui lòng chọn file âm thanh!");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("audio", file);
+
+            document.getElementById("uploadStatus").innerText = "🔄 Đang xử lý...";
+
+            const response = await fetch("http://localhost:5000/transcribe", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+            document.getElementById("uploadStatus").innerText = `✅ Kết quả: ${data.text}`;
+        }
+
+        // ======= NHẬP LINK FILE & GỬI LÊN BACKEND =======
+        async function fetchAndUpload() {
+            const fileUrl = document.getElementById("fileUrl").value;
+            if (!fileUrl) {
+                alert("Vui lòng nhập link file!");
+                return;
+            }
+
+            document.getElementById("linkStatus").innerText = "🔄 Đang tải xuống...";
+
+            const response = await fetch(fileUrl);
+            const blob = await response.blob();
+
+            const formData = new FormData();
+            formData.append("audio", blob, "audio.mp3");
+
+            document.getElementById("linkStatus").innerText = "🔄 Đang xử lý...";
+
+            const serverResponse = await fetch("http://localhost:5000/transcribe", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await serverResponse.json();
+            document.getElementById("linkStatus").innerText = `✅ Kết quả: ${data.text}`;
+        }
+    </script>
+</body>
+</html>
